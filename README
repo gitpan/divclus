@@ -1,3 +1,26 @@
+
+
+                        DIVCLUS
+
+
+Version.
+   2.2.
+
+Introduction.
+
+References
+   http://www.mrc-lmb.cam.ac.uk/genomes/divclus_home.html
+   ftp.mrc-lmb.cam.ac.uk in the directory /pub/genomes/Geanfammer
+
+Enclosed
+   A biological sequence handling perl subroutine library is added.
+   (B.pl)
+
+
+
+
+
+
 #____________________________________________________________________________
 # Title     : diviclus.pl
 # Usage     : diviclus.pl xxxxx.msp [s=100][t=30][e=30][f=2][v]

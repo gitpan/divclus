@@ -50,8 +50,8 @@
 #  $thresh = by t=   # seqlet length cutoff, default 30
 #  $evalue = by e=   # maximum evalue cutoff default 30
 #
-# Author    : Sarah A. Teichmann and Jong Park
-# Version   : 2.1
+# Author    : J. Park, Sarah Teichmann,
+# Version   : 2.2
 #------------------------------------------------------------------------------
 
 #use strict;
@@ -1242,10 +1242,12 @@ sub check_linkage_of_2_similar_seqlet_sets{
    }
    return(\$link_or_not);
 }
+
+
 #__________________________________________________________________________
 # Title     : show_subclusterings
 # Usage     : &show_subclusterings(\@out);
-# Function  : This is the very final sub of diviclus.pl
+# Function  : This is the very final sub of divclus.pl
 # Example   : @temp_show_sub=&show_subclusterings(\@out, $file, $sat_file, $dindom, $indup);
 # Warning   : You MUST NOT delete '# options : ..' entry
 #              as it is read  by various subroutines.
@@ -1255,7 +1257,7 @@ sub check_linkage_of_2_similar_seqlet_sets{
 #             f  for file output, eg: xxxxxxx.sat
 #
 # Reference : http://sonja.acad.cai.cam.ac.uk/perl_for_bio.html
-# Version   : 2.1
+# Version   : 2.4
 #-------------------------------------------------------------------------
 sub show_subclusterings{
 	#"""""""""""""""""< handle_arguments{ head Ver 4.1 >"""""""""""""""""""
@@ -1268,14 +1270,13 @@ sub show_subclusterings{
 	\@raw_string=\"@raw_string\"\n\t\@array=\"@array\"\n\t\@num_opt=\"@num_opt\"
 	\@char_opt=\"@char_opt\"\n\t\@file=\"@file\"\n\t\@string=\"@string\"\n" }
 	#""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-	my ($max_size, $SAT_file_out_too, $sat_file_name, $clu_file_name,
+    my ($max_size, $sat_file_name, $clu_file_name,
 		$ori_cluster_size, $ori_cluster_num, $good_bad, @keys, $percentage_fac,
-		$indup, @sizes, $sum_seq_num, $indup_percent, $indup_count);  # clusall_1e-5_clu_14-324_ss.sat
+		$indup, @sizes, $sum_seq_num, $indup_percent, $indup_count,
+		@sub_clustering_out_files);  # clusall_1e-5_clu_14-324_ss.sat
 	my @out=@{$array[0]};
 	$indup_count=0;
-	$|=1;
 
-	if($char_opt=~/s/){	    $SAT_file_out_too=1;	}
 	if($char_opt=~/d/){	    $dindom=1;	}
 	if($char_opt=~/i/){		$indup=1;	}
 	if($vars{'f'}=~/\d+/){     $factor= $vars{'f'}; }
@@ -1283,20 +1284,23 @@ sub show_subclusterings{
 	if($vars{'s'}=~/\d+/){	   $score = $vars{'s'};	}
 	if($vars{'e'}=~/\d+/){	   $evalue= $vars{'e'};	}
 
-	print "\n# show_subclusterings : \@file has : @file\n";
-	if( ($file[0]=~/([\S+_]*?(\d+)\-(\d+)[_\w]*)\.msp/)||
-		($file[0]=~/([\S+_]*?(\d+)\-(\d+)[_\w]*)\.sat/) ){
-		 $SAT_file_out_too=1;
+	#print "\n# show_subclusterings : \@file has : @file\n";
+	if( $file[0]=~/([\S+_]*?(\d+)\-(\d+)[_\w]*)\.msp/  or
+		$file[0]=~/([\S+_]*?(\d+)\-(\d+)[_\w]*)\.sat/   ){
 		 $ori_cluster_size=$2;
 		 $ori_cluster_num =$3;
 		 $base=$1;
 		 $sat_file_name="$base\.sat";
 		 $clu_file_name="$base\.clu";
 	}else{
-	     print "\n# The \@file input to show_subclusterings is not the right format\n"; exit;
+         print "\n# LINE:",__LINE__," The \@file input to show_subclusterings is not the right format, dying\n";
+         print "\n     Right format looks like: 13-234.msp \n";  exit;
 	}
 
-	open(CLU, ">$clu_file_name") or die "\n# show_subclusterings failed miserably to open \"$clu_file_name\" \n";
+
+    open(CLU, ">$clu_file_name") or die "\n# show_subclusterings failed miserably to open \"$clu_file_name\" \n";
+    push(@sub_clustering_out_files, $clu_file_name);
+
 
 	@out=@{&sort_string_by_length(\@out)};
 
@@ -1321,40 +1325,24 @@ sub show_subclusterings{
 	   if($max_size < $sub_clu_size){
 		  $max_size=$sub_clu_size; ## This is to collect the sizes of clusters to see if it is good.
 	   }
-	   $indup_count= &print_summary_for_diviclus( $sat_file_name,
-		  $SAT_file_out_too, $count, \%tem2, \%tem, $ori_cluster_num, $ori_cluster_size, $dindom,
-		  $clu_file_name, \%tem3, $indup );
+	   $indup_count= &print_summary_for_divclus(
+		         $count, \%tem2, \%tem,
+		         $ori_cluster_num,
+		         $ori_cluster_size,
+		         $dindom,
+		         $clu_file_name,
+		         \%tem3,
+		         $indup );
 
-	   sub print_summary_for_diviclus{ #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			$sat_file_name=$_[0];
-			if($_[1]== 1){	   $SAT =1;
-			   open (SAT, ">$sat_file_name");
-			};
-			my $count=$_[2]; # count of cluster
-			my %tem2=%{$_[3]};	my $num_seq=@keys=keys %tem2;
-			my %tem=%{$_[4]};	my $ori_cluster_num=$_[5];
+	   sub print_summary_for_divclus{ #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			my $count=$_[0]; # count of cluster
+			my %tem2=%{$_[1]};	my $num_seq=@keys=keys %tem2;
+			my %tem=%{$_[2]};	my $ori_cluster_num=$_[3];
 			my $new_clus_NAME=$ori_cluster_num.'0'.$count.'0'.$num_seq;
-			my $ori_cluster_size=$_[6];
-			my $dindom=$_[7];	my %tem3=%{$_[9]};
-			my $indup=$_[10];	my (%internal_dup);
+			my $ori_cluster_size=$_[4];
+			my $dindom=$_[5];	my %tem3=%{$_[7]};
+			my $indup=$_[8];	my (%internal_dup);
 
-			if($SAT==1){
-			   print SAT "\n_________________________________________________________";
-			   print SAT "\n>$num_seq sequences in this subcluster seqlet($count)====";
-			   print SAT "\n$out[$i] \n\n";
-			   for($x=0; $x <@keys; $x++){
-				  printf SAT ("   # %-11s : %-4s times occur %-s\n", $keys[$x], $tem{$keys[$x]}, $tem2{$keys[$x]});
-			   }
-			   print SAT "\n";
-			   #~~~~~~~~~~ Domain Inside Domain ~~~~~~~~~~~~~~~~~
-			   for($x=0; $x <@keys; $x++){
-				  @domain_inside_domain=@{&get_domain_inside_domain($tem2{$keys[$x]})};
-				  for($m=0; $m< @domain_inside_domain; $m++){
-					 printf SAT "      Dindom: $m : $domain_inside_domain[$m]\n";
-				  }
-				  print SAT "\n";
-			   }
-			}
 			#~~~~~~~~~~ Domain Inside Domain ~~~~~~~~~~~~~~~~~
 			if($dindom==1){
 				for($x=0; $x <@keys; $x++){
@@ -1390,11 +1378,11 @@ sub show_subclusterings{
 
 			#~~~~~~~~~~ Summary ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			print  CLU  "Cluster size $num_seq\n";
-			printf CLU ("Cluster %-12s # E:%-5s Factor:%-2s P:%-2s, Ori size:%-4s Sub:%-4s From:%-12s\n",
+            printf CLU ("Cluster number %-12s # E:%-5s Factor:%-2s P:%-2s, Ori size:%-4s Sub:%-4s From:%-12s\n",
 						  $new_clus_NAME, $evalue, $factor, $percentage_fac,
 						  $ori_cluster_size, $num_seq, $ori_cluster_num);
 			print       "Cluster size $num_seq\n";
-			printf     ("Cluster %-12s # E:%-5s Factor:%-2s P:%-2s, Ori size:%-4s Sub:%-4s From:%-12s\n",
+			printf     ("Cluster number %-12s # E:%-5s Factor:%-2s P:%-2s, Ori size:%-4s Sub:%-4s From:%-12s\n",
 			              $new_clus_NAME, $evalue, $factor, $percentage_fac,
 			              $ori_cluster_size, $num_seq, $ori_cluster_num);
 			for($x=0; $x <@keys; $x++){
@@ -1406,13 +1394,17 @@ sub show_subclusterings{
 			return($indup_count);
 	   }
 	}
+    close(CLU); ## this is a bug fix
 
 	if($max_size == $ori_cluster_size){   $good_bad=1;
 	}else{	                              $good_bad=0;	}
 
  	print "\n";
-	return($good_bad, $indup_count, $ori_cluster_size);
+    return($good_bad, $indup_count, $ori_cluster_size, \@sub_clustering_out_files);
 }
+
+
+
 
 #______________________________________________________________________
 # Title     : sort_string_by_length (synonym of sort_str_by_length  )
@@ -1611,6 +1603,8 @@ sub show_array{
 	print "\n"; #### This is necessary to distinguish different arrays.
   }
 }
+
+
 #______________________________________________________________
 # Title     : merge_similar_seqlets
 # Usage     : @all_seqlets = @{&merge_similar_seqlets(@all_seqlets)};
@@ -1633,7 +1627,7 @@ sub show_array{
 #  $large_region=  L by L -L  # taking larger  region overlapped in removing similar regions
 #  $average_region=A by A -A # taking average region overlapped in removing similar regions
 #
-# Version   : 1.7
+# Version   : 1.8
 #--------------------------------------------------------------
 sub merge_similar_seqlets{
    my (@all_seqlets, @result_all_seqlets, $i, $seq1, $start1, $end1, $seq2,
@@ -1649,7 +1643,7 @@ sub merge_similar_seqlets{
 	   if(ref($_[$i]) eq 'ARRAY'){
 		   @all_seqlets=@{$_[$i]};
 	   }elsif($_[$i]=~/f=(\S+)/){ $factor=$1
-	   }elsif($_[$i]=~/o/i){      $optimize=1
+	   }elsif($_[$i]=~/z/i){      $optimize=1
 	   }elsif($_[$i]=~/^S/){      $short_region='S';
 	   }elsif($_[$i]=~/^L/){      $large_region='L';
 	   }elsif($_[$i]=~/^A/){      $average_region='A'; }
@@ -1675,7 +1669,7 @@ sub merge_similar_seqlets{
 	  #________________________________________________________________________________
 	  if($split1[0] eq $split2[0]){
 		  @split=(@split1, @split2);
-		  if($optimize==1){ #~~~~~ optimize option removes similar seqlets
+		  if($optimize){ #~~~~~ optimize option removes similar seqlets
 			 push(@result_all_seqlets, join(' ', sort @{&remove_similar_seqlets(\@split,
 			                              $short_region, $large_region, $average_region)} ));
 		  }else{
@@ -1709,7 +1703,7 @@ sub merge_similar_seqlets{
 					if( ( ($diff_start+$diff_end)/2 <= $smaller_leng/$factor ) &&
 						($smaller_leng > $leng_thresh ) ){
 						@split=(@split1, @split2);
-						if($optimize==1){ #~~~~~ optimize option removes similar seqlets
+						if($optimize){ #~~~~~ optimize option removes similar seqlets
 						   push(@result_all_seqlets, join(' ', sort @{&remove_similar_seqlets(\@split,
 						                            $short_region, $large_region, $average_region )} ));
 						}else{
@@ -1741,6 +1735,7 @@ sub merge_similar_seqlets{
    }
    return(\@result_all_seqlets);
 }
+
 
 
 #_____________________________________________________________________________
@@ -1848,149 +1843,6 @@ sub remove_similar_seqlets{
 	  }
    }
    return(\@seqlets);
-}
-
-
-#______________________________________________________________
-# Title     : merge_sequence_in_msp_chunk
-# Usage     :
-# Function  : merges sequences which are linked by common regions
-#             This filters the sequences by evalue and ssearch score
-#             This is the main algorithm of merging similar sequences.
-# Example   :
-# Warning   : You MUST NOT delete '# options : ..' entry
-#              as it is read  by various subroutines.
-# Keywords  : connect_sequence_in_msp, link_sequence_in_msp_chunk
-#             connect_sequence_in_msp_chunk, link_sequence_in_msp
-#             merge_sequence, link_sequence, connect_sequence
-# Options   : _  for debugging.
-#             #  for debugging.
-#             m  for merge file output format (.mrg)
-#             t= for threshold of seqlet length eg)  "t=30"
-#             f= for overlap factor (usually between 2 to 7 )
-#                 2 means, if the two regions are not overlapped
-#                  by more than HALF of of the smaller region
-#                  it will not regard as common seqlet block
-#             s= for ssearch score minimum
-#             e= for ssearch e value maximum
-#             S  for S -S  # taking shorter region overlapped in removing similar regions
-#             L  for L -L  # taking larger  region overlapped in removing similar regions
-#             A  for A -A # taking average region overlapped in removing similar regions
-#
-# Returns   :
-# Argument  :
-# Version   : 2.2
-#--------------------------------------------------------------
-sub merge_sequence_in_msp_chunk{
-	#"""""""""""""""""< handle_arguments{ head Ver 4.1 >"""""""""""""""""""
-	my(@A)=&handle_arguments(@_);my($num_opt)=${$A[7]};my($char_opt)=${$A[8]};
-	my(@hash)=@{$A[0]};my(@file)=@{$A[4]};my(@dir)=@{$A[3]};my(@array)=@{$A[1]};
-	my(@string)=@{$A[2]};my(@num_opt)=@{$A[5]};my(@char_opt)=@{$A[6]};
-	my(@raw_string)=@{$A[9]};my(%vars)=%{$A[10]};my(@range)=@{$A[11]};
-	my($i,$j,$c,$d,$e,$f,$g,$h,$k,$l,$m,$n,$o,$p,$q,$r,$s,$t,$u,$v,$w,$x,$y,$z);
-	if($debug==1){print "\n\t\@hash=\"@hash\"
-	\@raw_string=\"@raw_string\"\n\t\@array=\"@array\"\n\t\@num_opt=\"@num_opt\"
-	\@char_opt=\"@char_opt\"\n\t\@file=\"@file\"\n\t\@string=\"@string\"\n" }
-	#""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-   my ($ssearch_score2, $evalue_found2, $evalue_found1, $ssearch_score1, $optimize );
-   my ($L, %out_hash, @out, $LL, @Final_out, $verbose, $final_factor, $R_diff,
-		$short_region, $large_region, $average_region);
-   my $factor =6; # default factor for around 30% sequence mis-overlap is the threshold for common block
-	  #~~~~~~~~~~~~~~ The lower the factor the larger clustering will occur ~~~~~~~~~~~~
-   my $score  =105; # default ssearch score. seq below this will be chucked out
-   my $evalue =40; # default maximum e value used. Seq higher than this will be thrown out
-   my $thresh =40; # sequence length threshold. overlap less than this will be ignored
-
-   if($char_opt=~/v/){     $verbose = 'v'
-   }if($char_opt=~/o/){    $optimize = 'o'
-   }if($char_opt=~/S/){    $short_region='S';
-   }if($char_opt=~/L/){	   $large_region='L';
-   }if($char_opt=~/A/){	   $average_region='A'; }
-
-   if($vars{'t'}=~/\d+/){
-	  $thresh=$vars{'t'}; print "\n# merge_sequence_in_msp_chunk: Thresh is $thresh\n" if (defined $verbose);
-   }if($vars{'f'}=~/\d+/){
-	  $factor=$vars{'f'}; print "\n# merge_sequence_in_msp_chunk: Factor is $factor\n" if (defined $verbose);
-   }if($vars{'s'}=~/\d+/){
-	  $score = $vars{'s'}; print "\n# merge_sequence_in_msp_chunk: Score is $score\n" if (defined $verbose);
-   }if($vars{'e'}=~/\d+/){
-	  $evalue= $vars{'e'}; print "\n# merge_sequence_in_msp_chunk: Evalue is $evalue\n" if (defined $verbose);
-   }
-   my @seqlets=split(/\n+/, (${$_[0]} || $_[0]) );
-
-   F1: for($i=0; $i < @seqlets; $i ++){
-	  if($seqlets[$i]=~/^ *((\d+) +(\d+\.?[e\-\d]*) +(\d+) +(\d+) +(\S+) +(\d+) +(\d+)) +(\S+) *(.*)/){
-		  if($6 eq $9){ splice(@seqlets, $i, 1); $i--; next };
-		  ($long_match1, $enq_seq1, $mat_seq1, $R_start1, $R_end1 )=($1, $6, $9, $4, $5);
-		  $R_leng1=$R_end1-$R_start1;
-		  $ssearch_score1= $2;
-		  $evalue_found1 = $3;
-	  }
-	  if( ($R_leng1 < $thresh) || ($ssearch_score1 < $score) ){ splice(@seqlets, $i, 1); $i--; next; }
-	  if( $evalue_found1 > $evalue){ splice(@seqlets, $i, 1); $i--; next; }
-
-	  F2: for($j=0; $j < @seqlets; $j ++){
-		 if($seqlets[$i] eq $seqlets[$j]){ next };
-		 if($seqlets[$j]=~/^ *((\d+) +(\d+\.?[e\-\d]*) +(\d+) +(\d+) +(\S+) +(\d+) +(\d+)) +(\S+) *(.*)/){
-			($long_match2, $enq_seq2, $mat_seq2, $R_start2, $R_end2)=($1, $6, $9, $4, $5);
-			$R_leng2=$R_end2-$R_start2;
-			$ssearch_score2=$2;
-			$evalue_found2= $3;
-	     }
-		 if( ($R_leng2 < $thresh)||($ssearch_score2 < $score) ){ splice(@seqlets, $j, 1); $j--; next; }
-		 if( $evalue_found2 > $evalue){ splice(@seqlets, $j, 1); $j--; next; }
-
-		 $R_diff=abs($R_leng1-$R_leng2)/2;   ## <<<---- Note it is div by 2
-
-		 if($R_leng2 < $R_leng1){ $smaller_leng=$R_leng2; }else{ $smaller_leng=$R_leng1; }
-
-		 $Start_diff=abs($R_start1-$R_start2)/2; ## <<<---- Note it is div by 2
-		 $final_factor=$smaller_leng/$factor;
-
-
-		 #~~~~~~~~~~ If average R_diff and average Start_diff are less then 1/7 of the smaller seqlet
-		 #~~~~~~~~~~ we regard they are same selqets
-		 if(( $R_diff < $final_factor ) &&       ### $Start_diff is essential!
-			($Start_diff < $final_factor ) ){  ### if diff is less than around 30% of the smaller length
-			if($verbose=~/v/){
-			   print "\n\$R_diff:$R_diff \$Start_diff:$Start_diff $smaller_leng $final_factor $factor";
-			}
-			if($R_leng2 >= $R_leng1){
-			       #~~~~~ $mat_seq1 or $mat_seq2 can increase to 'slr1453,sll0238', so you need ',' in the middle only
-				   $extended_name="$mat_seq2,$mat_seq1";
-				   $L=length($extended_name);
-				   $LL=length($long_match2)+2;
-				   $seqlets[$i]= sprintf("%-${LL}s %-${L}s", $long_match2, $extended_name);
-				   splice(@seqlets, $j, 1);
-				   $i-- unless($i==0);
-				   $j--;
-				   next F1;
-			}elsif( $R_leng1 >= $R_leng2){  ## chooses the bigger range seq
-				   $extended_name="$mat_seq1,$mat_seq2"; # must be ',' not ' '
-				   $L=length($extended_name);
-				   $LL=length($long_match1)+2;
-				   $seqlets[$i]=sprintf("%-${LL}s %-${L}s", $long_match1, $extended_name);
-				   splice(@seqlets, $j, 1);
-				   $i-- unless($i <= 0);
-				   $j--;
-				   next F1;
-			}
-	     }else{
-			next F2;
-		 }
-	  }
-   }
-   if($char_opt=~/m/){
-	  for($i=0; $i< @seqlets; $i++){
-		if($seqlets[$i]=~/^ *\d+ +\d+\.?[e\-\d]* +\d+ +\d+ +(\S+) +\d+ +\d+ +(\S+) *$/){
-		   if($1 eq $2){ next }
-		   $leading_seq=$1; $long=$2; $long=~s/\,/ /g;
-		   push(@Final_out, "$leading_seq $long" );
-		}
-	  }
-   }
-   sort @Final_out;
-   return(\@Final_out);
 }
 
 
@@ -2475,6 +2327,150 @@ sub assign_options_to_variables{
 		}
 	}
 }
+#______________________________________________________________
+# Title     : merge_sequence_in_msp_chunk
+# Usage     :
+# Function  : merges sequences which are linked by common regions
+#             This filters the sequences by evalue and ssearch score
+#             This is the main algorithm of merging similar sequences.
+# Example   :
+# Warning   : You MUST NOT delete '# options : ..' entry
+#              as it is read  by various subroutines.
+# Keywords  : connect_sequence_in_msp, link_sequence_in_msp_chunk
+#             connect_sequence_in_msp_chunk, link_sequence_in_msp
+#             merge_sequence, link_sequence, connect_sequence
+# Options   : _  for debugging.
+#             #  for debugging.
+#             m  for merge file output format (.mrg)
+#             t= for threshold of seqlet length eg)  "t=30"
+#             f= for overlap factor (usually between 2 to 7 )
+#                 2 means, if the two regions are not overlapped
+#                  by more than HALF of of the smaller region
+#                  it will not regard as common seqlet block
+#             s= for ssearch score minimum
+#             e= for ssearch e value maximum
+#             S  for S -S  # taking shorter region overlapped in removing similar regions
+#             L  for L -L  # taking larger  region overlapped in removing similar regions
+#             A  for A -A # taking average region overlapped in removing similar regions
+#
+# Returns   :
+# Argument  :
+# Version   : 2.3
+#--------------------------------------------------------------
+sub merge_sequence_in_msp_chunk{
+	#"""""""""""""""""< handle_arguments{ head Ver 4.1 >"""""""""""""""""""
+	my(@A)=&handle_arguments(@_);my($num_opt)=${$A[7]};my($char_opt)=${$A[8]};
+	my(@hash)=@{$A[0]};my(@file)=@{$A[4]};my(@dir)=@{$A[3]};my(@array)=@{$A[1]};
+	my(@string)=@{$A[2]};my(@num_opt)=@{$A[5]};my(@char_opt)=@{$A[6]};
+	my(@raw_string)=@{$A[9]};my(%vars)=%{$A[10]};my(@range)=@{$A[11]};
+	my($i,$j,$c,$d,$e,$f,$g,$h,$k,$l,$m,$n,$o,$p,$q,$r,$s,$t,$u,$v,$w,$x,$y,$z);
+	if($debug==1){print "\n\t\@hash=\"@hash\"
+	\@raw_string=\"@raw_string\"\n\t\@array=\"@array\"\n\t\@num_opt=\"@num_opt\"
+	\@char_opt=\"@char_opt\"\n\t\@file=\"@file\"\n\t\@string=\"@string\"\n" }
+	#""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+   my ($ssearch_score2, $evalue_found2, $evalue_found1, $ssearch_score1, $optimize );
+   my ($L, %out_hash, @out, $LL, @Final_out, $verbose, $final_factor, $R_diff,
+		$short_region, $large_region, $average_region);
+   my $factor =6; # default factor for around 30% sequence mis-overlap is the threshold for common block
+	  #~~~~~~~~~~~~~~ The lower the factor the larger clustering will occur ~~~~~~~~~~~~
+   my $score  =105; # default ssearch score. seq below this will be chucked out
+   my $evalue =40; # default maximum e value used. Seq higher than this will be thrown out
+   my $thresh =40; # sequence length threshold. overlap less than this will be ignored
+
+   if($char_opt=~/v/){     $verbose = 'v'
+   }if($char_opt=~/z/){    $optimize = 'z'
+   }if($char_opt=~/S/){    $short_region='S';
+   }if($char_opt=~/L/){	   $large_region='L';
+   }if($char_opt=~/A/){	   $average_region='A'; }
+
+   if($vars{'t'}=~/\d+/){
+	  $thresh=$vars{'t'}; print "\n# merge_sequence_in_msp_chunk: Thresh is $thresh\n" if (defined $verbose);
+   }if($vars{'f'}=~/\d+/){
+	  $factor=$vars{'f'}; print "\n# merge_sequence_in_msp_chunk: Factor is $factor\n" if (defined $verbose);
+   }if($vars{'s'}=~/\d+/){
+	  $score = $vars{'s'}; print "\n# merge_sequence_in_msp_chunk: Score is $score\n" if (defined $verbose);
+   }if($vars{'e'}=~/\d+/){
+	  $evalue= $vars{'e'}; print "\n# merge_sequence_in_msp_chunk: Evalue is $evalue\n" if (defined $verbose);
+   }
+   my @seqlets=split(/\n+/, (${$_[0]} || $_[0]) );
+
+   F1: for($i=0; $i < @seqlets; $i ++){
+	  if($seqlets[$i]=~/^ *((\d+) +(\d+\.?[e\-\d]*) +(\d+) +(\d+) +(\S+) +(\d+) +(\d+)) +(\S+) *(.*)/){
+		  if($6 eq $9){ splice(@seqlets, $i, 1); $i--; next };
+		  ($long_match1, $enq_seq1, $mat_seq1, $R_start1, $R_end1 )=($1, $6, $9, $4, $5);
+		  $R_leng1=$R_end1-$R_start1;
+		  $ssearch_score1= $2;
+		  $evalue_found1 = $3;
+	  }
+	  if( ($R_leng1 < $thresh) || ($ssearch_score1 < $score) ){ splice(@seqlets, $i, 1); $i--; next; }
+	  if( $evalue_found1 > $evalue){ splice(@seqlets, $i, 1); $i--; next; }
+
+	  F2: for($j=0; $j < @seqlets; $j ++){
+		 if($seqlets[$i] eq $seqlets[$j]){ next };
+		 if($seqlets[$j]=~/^ *((\d+) +(\d+\.?[e\-\d]*) +(\d+) +(\d+) +(\S+) +(\d+) +(\d+)) +(\S+) *(.*)/){
+			($long_match2, $enq_seq2, $mat_seq2, $R_start2, $R_end2)=($1, $6, $9, $4, $5);
+			$R_leng2=$R_end2-$R_start2;
+			$ssearch_score2=$2;
+			$evalue_found2= $3;
+	     }
+		 if( ($R_leng2 < $thresh)||($ssearch_score2 < $score) ){ splice(@seqlets, $j, 1); $j--; next; }
+		 if( $evalue_found2 > $evalue){ splice(@seqlets, $j, 1); $j--; next; }
+
+		 $R_diff=abs($R_leng1-$R_leng2)/2;   ## <<<---- Note it is div by 2
+
+		 if($R_leng2 < $R_leng1){ $smaller_leng=$R_leng2; }else{ $smaller_leng=$R_leng1; }
+
+		 $Start_diff=abs($R_start1-$R_start2)/2; ## <<<---- Note it is div by 2
+		 $final_factor=$smaller_leng/$factor;
+
+
+		 #~~~~~~~~~~ If average R_diff and average Start_diff are less then 1/7 of the smaller seqlet
+		 #~~~~~~~~~~ we regard they are same selqets
+		 if(( $R_diff < $final_factor ) &&       ### $Start_diff is essential!
+			($Start_diff < $final_factor ) ){  ### if diff is less than around 30% of the smaller length
+			if($verbose=~/v/){
+			   print "\n\$R_diff:$R_diff \$Start_diff:$Start_diff $smaller_leng $final_factor $factor";
+			}
+			if($R_leng2 >= $R_leng1){
+			       #~~~~~ $mat_seq1 or $mat_seq2 can increase to 'slr1453,sll0238', so you need ',' in the middle only
+				   $extended_name="$mat_seq2,$mat_seq1";
+				   $L=length($extended_name);
+				   $LL=length($long_match2)+2;
+				   $seqlets[$i]= sprintf("%-${LL}s %-${L}s", $long_match2, $extended_name);
+				   splice(@seqlets, $j, 1);
+				   $i-- unless($i==0);
+				   $j--;
+				   next F1;
+			}elsif( $R_leng1 >= $R_leng2){  ## chooses the bigger range seq
+				   $extended_name="$mat_seq1,$mat_seq2"; # must be ',' not ' '
+				   $L=length($extended_name);
+				   $LL=length($long_match1)+2;
+				   $seqlets[$i]=sprintf("%-${LL}s %-${L}s", $long_match1, $extended_name);
+				   splice(@seqlets, $j, 1);
+				   $i-- unless($i <= 0);
+				   $j--;
+				   next F1;
+			}
+	     }else{
+			next F2;
+		 }
+	  }
+   }
+   if($char_opt=~/m/){
+	  for($i=0; $i< @seqlets; $i++){
+		if($seqlets[$i]=~/^ *\d+ +\d+\.?[e\-\d]* +\d+ +\d+ +(\S+) +\d+ +\d+ +(\S+) *$/){
+		   if($1 eq $2){ next }
+		   $leading_seq=$1; $long=$2; $long=~s/\,/ /g;
+		   push(@Final_out, "$leading_seq $long" );
+		}
+	  }
+   }
+   sort @Final_out;
+   return(\@Final_out);
+}
+
+
+
 #________________________________________________________________________
 # Title     : get_base_names
 # Usage     : $base =${&get_base_names(\$file_name)};
@@ -2511,3 +2507,281 @@ sub get_base_names{
 	}
 	if(@base == 1 ){ \$base[0] }else{ \@base }
 }
+
+__END__
+
+#______________________________________________________________
+# Title     : merge_similar_seqlets
+# Usage     : @all_seqlets = @{&merge_similar_seqlets(@all_seqlets)};
+# Function  : merges seqlet sets which have identical
+#             sequences and share similar regions by connection factor of 30%
+#             This means, if any two seqlets from the same sequences which
+#             share more than 70% seqlet regions overlapping are merged
+#             This only sees the very first sequence in the seqlets line!!!
+#             (so, PARTIAL MERGE !!)
+# Example   : INPUT:
+#
+#   @input=( 'seq1_1-30 seq2_1-40 seq3_1-50',
+#            'seq1_2-49 seq4_4-40 seq8_2-99'....)
+#
+# Keywords  : merge_similar_sequences, merge_sequence_names,
+#              merge_sequence_ranges, merge_similar_sequences_with_ranges
+# Options   : _  for debugging.
+#             #  for debugging.
+#  $short_region=  S by S -S  # taking shorter region overlapped in removing similar regions
+#  $large_region=  L by L -L  # taking larger  region overlapped in removing similar regions
+#  $average_region=A by A -A # taking average region overlapped in removing similar regions
+#
+# Version   : 1.7
+#--------------------------------------------------------------
+sub merge_similar_seqlets{
+   my (@all_seqlets, @result_all_seqlets, $i, $seq1, $start1, $end1, $seq2,
+	   $smaller_leng, $start2, $end2, @split, @split1, @split2,
+	   $short_region, $large_region, $average_region);
+   my $factor=6.5;     #  33% sequence mismatch region is allowed(3)
+   my $leng_thresh=30;
+   my $optimize=0;
+   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~`
+   # Sorting (parsing) input to get options and input array
+   #_________________________________________________________
+   for($i=0; $i< @_; $i++){
+	   if(ref($_[$i]) eq 'ARRAY'){
+		   @all_seqlets=@{$_[$i]};
+	   }elsif($_[$i]=~/f=(\S+)/){ $factor=$1
+	   }elsif($_[$i]=~/o/i){      $optimize=1
+	   }elsif($_[$i]=~/^S/){      $short_region='S';
+	   }elsif($_[$i]=~/^L/){      $large_region='L';
+	   }elsif($_[$i]=~/^A/){      $average_region='A'; }
+   }
+
+   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   # This is to remove which are identical in @all_seqlets;
+   #_________________________________________________________
+   for($i=0; $i< @all_seqlets; $i++){
+	  if($all_seqlets[$i] eq $all_seqlets[$i+1]){
+		  push(@result_all_seqlets, $all_seqlets[$i]);
+		  $i++;
+		  next;
+	  }
+	  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	  # @split1 and 2 are arrays from different string entry in @all_seqlets
+	  #_________________________________________________________
+	  @split1=sort split(/ +/, $all_seqlets[$i]);
+	  @split2=sort split(/ +/, $all_seqlets[$i+1]);
+
+	  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~``
+	  #  (1) If the first elements of @split1 and 2 are identical, lets merge the two arrays
+	  #________________________________________________________________________________
+	  if($split1[0] eq $split2[0]){
+		  @split=(@split1, @split2);
+		  if($optimize==1){ #~~~~~ optimize option removes similar seqlets
+			 push(@result_all_seqlets, join(' ', sort @{&remove_similar_seqlets(\@split,
+			                              $short_region, $large_region, $average_region)} ));
+		  }else{
+			 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			 # Only removes exactly identical ones
+			 #__________________________________________________________
+			 push(@result_all_seqlets, join(' ', @{&remove_dup_in_array(\@split, 's')} ));
+		  }
+		  $i++;
+		  next;
+	  }
+	  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~``
+	  # (2) If the first elements of @split1 and 2 are NOT identical, lets check the sequence ranges
+	  #________________________________________________________________________________
+	  if($split1[0] =~/^(\S+)_(\d+)\-(\d+)/){
+		   ($seq1, $start1, $end1)=($1, $2, $3);
+		   if($split2[0] =~/^(\S+)_(\d+)\-(\d+)/){
+			   ($seq2, $start2, $end2)=($1, $2, $3);
+
+			   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~````
+			   # Check if the seqs are identicl (from the two arrays), no point to merge which are not identical from the first
+			   #__________________________________________________________________________________________
+			   if($seq1 eq $seq2){
+					$diff_start=abs($start1-$start2);
+					$diff_end  =abs($end1  -$end2  );
+					$leng1=$end1-$start1;
+					$leng2=$end2-$start2;
+					if($leng1 >= $leng2){ $smaller_leng=$leng2; }else{ $smaller_leng=$leng1; }
+
+					#~~~~~~ If the sum of overhangs are smaller than a third of average length
+					if( ( ($diff_start+$diff_end)/2 <= $smaller_leng/$factor ) &&
+						($smaller_leng > $leng_thresh ) ){
+						@split=(@split1, @split2);
+						if($optimize==1){ #~~~~~ optimize option removes similar seqlets
+						   push(@result_all_seqlets, join(' ', sort @{&remove_similar_seqlets(\@split,
+						                            $short_region, $large_region, $average_region )} ));
+						}else{
+						   push(@result_all_seqlets, join(' ', @{&remove_dup_in_array(\@split, 's')} ));
+						}
+						$i++;
+						next;
+					}else{
+						push(@result_all_seqlets, join(' ', @split1));
+						next;
+					}
+			   }
+			   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+			   # As they are not teh same, lets just check the next one in @split2
+			   #_____________________________________________________________________
+			   else{
+					push(@result_all_seqlets, join(' ', @split1));
+					next;
+			   }
+		   }
+		   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		   # If there is no range (region) in seq naem, let's skip, as there is no way to check
+		   #__________________________________________________________________________________
+		   else{
+			   push(@result_all_seqlets, join(' ', @split1));
+			   next;
+		   }
+	  }
+   }
+   return(\@result_all_seqlets);
+}
+
+#______________________________________________________________
+# Title     : merge_sequence_in_msp_chunk
+# Usage     :
+# Function  : merges sequences which are linked by common regions
+#             This filters the sequences by evalue and ssearch score
+#             This is the main algorithm of merging similar sequences.
+# Example   :
+# Warning   : You MUST NOT delete '# options : ..' entry
+#              as it is read  by various subroutines.
+# Keywords  : connect_sequence_in_msp, link_sequence_in_msp_chunk
+#             connect_sequence_in_msp_chunk, link_sequence_in_msp
+#             merge_sequence, link_sequence, connect_sequence
+# Options   : _  for debugging.
+#             #  for debugging.
+#             m  for merge file output format (.mrg)
+#             t= for threshold of seqlet length eg)  "t=30"
+#             f= for overlap factor (usually between 2 to 7 )
+#                 2 means, if the two regions are not overlapped
+#                  by more than HALF of of the smaller region
+#                  it will not regard as common seqlet block
+#             s= for ssearch score minimum
+#             e= for ssearch e value maximum
+#             S  for S -S  # taking shorter region overlapped in removing similar regions
+#             L  for L -L  # taking larger  region overlapped in removing similar regions
+#             A  for A -A # taking average region overlapped in removing similar regions
+#
+# Returns   :
+# Argument  :
+# Version   : 2.2
+#--------------------------------------------------------------
+sub merge_sequence_in_msp_chunk{
+	#"""""""""""""""""< handle_arguments{ head Ver 4.1 >"""""""""""""""""""
+	my(@A)=&handle_arguments(@_);my($num_opt)=${$A[7]};my($char_opt)=${$A[8]};
+	my(@hash)=@{$A[0]};my(@file)=@{$A[4]};my(@dir)=@{$A[3]};my(@array)=@{$A[1]};
+	my(@string)=@{$A[2]};my(@num_opt)=@{$A[5]};my(@char_opt)=@{$A[6]};
+	my(@raw_string)=@{$A[9]};my(%vars)=%{$A[10]};my(@range)=@{$A[11]};
+	my($i,$j,$c,$d,$e,$f,$g,$h,$k,$l,$m,$n,$o,$p,$q,$r,$s,$t,$u,$v,$w,$x,$y,$z);
+	if($debug==1){print "\n\t\@hash=\"@hash\"
+	\@raw_string=\"@raw_string\"\n\t\@array=\"@array\"\n\t\@num_opt=\"@num_opt\"
+	\@char_opt=\"@char_opt\"\n\t\@file=\"@file\"\n\t\@string=\"@string\"\n" }
+	#""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+   my ($ssearch_score2, $evalue_found2, $evalue_found1, $ssearch_score1, $optimize );
+   my ($L, %out_hash, @out, $LL, @Final_out, $verbose, $final_factor, $R_diff,
+		$short_region, $large_region, $average_region);
+   my $factor =6; # default factor for around 30% sequence mis-overlap is the threshold for common block
+	  #~~~~~~~~~~~~~~ The lower the factor the larger clustering will occur ~~~~~~~~~~~~
+   my $score  =105; # default ssearch score. seq below this will be chucked out
+   my $evalue =40; # default maximum e value used. Seq higher than this will be thrown out
+   my $thresh =40; # sequence length threshold. overlap less than this will be ignored
+
+   if($char_opt=~/v/){     $verbose = 'v'
+   }if($char_opt=~/o/){    $optimize = 'o'
+   }if($char_opt=~/S/){    $short_region='S';
+   }if($char_opt=~/L/){	   $large_region='L';
+   }if($char_opt=~/A/){	   $average_region='A'; }
+
+   if($vars{'t'}=~/\d+/){
+	  $thresh=$vars{'t'}; print "\n# merge_sequence_in_msp_chunk: Thresh is $thresh\n" if (defined $verbose);
+   }if($vars{'f'}=~/\d+/){
+	  $factor=$vars{'f'}; print "\n# merge_sequence_in_msp_chunk: Factor is $factor\n" if (defined $verbose);
+   }if($vars{'s'}=~/\d+/){
+	  $score = $vars{'s'}; print "\n# merge_sequence_in_msp_chunk: Score is $score\n" if (defined $verbose);
+   }if($vars{'e'}=~/\d+/){
+	  $evalue= $vars{'e'}; print "\n# merge_sequence_in_msp_chunk: Evalue is $evalue\n" if (defined $verbose);
+   }
+   my @seqlets=split(/\n+/, (${$_[0]} || $_[0]) );
+
+   F1: for($i=0; $i < @seqlets; $i ++){
+	  if($seqlets[$i]=~/^ *((\d+) +(\d+\.?[e\-\d]*) +(\d+) +(\d+) +(\S+) +(\d+) +(\d+)) +(\S+) *(.*)/){
+		  if($6 eq $9){ splice(@seqlets, $i, 1); $i--; next };
+		  ($long_match1, $enq_seq1, $mat_seq1, $R_start1, $R_end1 )=($1, $6, $9, $4, $5);
+		  $R_leng1=$R_end1-$R_start1;
+		  $ssearch_score1= $2;
+		  $evalue_found1 = $3;
+	  }
+	  if( ($R_leng1 < $thresh) || ($ssearch_score1 < $score) ){ splice(@seqlets, $i, 1); $i--; next; }
+	  if( $evalue_found1 > $evalue){ splice(@seqlets, $i, 1); $i--; next; }
+
+	  F2: for($j=0; $j < @seqlets; $j ++){
+		 if($seqlets[$i] eq $seqlets[$j]){ next };
+		 if($seqlets[$j]=~/^ *((\d+) +(\d+\.?[e\-\d]*) +(\d+) +(\d+) +(\S+) +(\d+) +(\d+)) +(\S+) *(.*)/){
+			($long_match2, $enq_seq2, $mat_seq2, $R_start2, $R_end2)=($1, $6, $9, $4, $5);
+			$R_leng2=$R_end2-$R_start2;
+			$ssearch_score2=$2;
+			$evalue_found2= $3;
+	     }
+		 if( ($R_leng2 < $thresh)||($ssearch_score2 < $score) ){ splice(@seqlets, $j, 1); $j--; next; }
+		 if( $evalue_found2 > $evalue){ splice(@seqlets, $j, 1); $j--; next; }
+
+		 $R_diff=abs($R_leng1-$R_leng2)/2;   ## <<<---- Note it is div by 2
+
+		 if($R_leng2 < $R_leng1){ $smaller_leng=$R_leng2; }else{ $smaller_leng=$R_leng1; }
+
+		 $Start_diff=abs($R_start1-$R_start2)/2; ## <<<---- Note it is div by 2
+		 $final_factor=$smaller_leng/$factor;
+
+
+		 #~~~~~~~~~~ If average R_diff and average Start_diff are less then 1/7 of the smaller seqlet
+		 #~~~~~~~~~~ we regard they are same selqets
+		 if(( $R_diff < $final_factor ) &&       ### $Start_diff is essential!
+			($Start_diff < $final_factor ) ){  ### if diff is less than around 30% of the smaller length
+			if($verbose=~/v/){
+			   print "\n\$R_diff:$R_diff \$Start_diff:$Start_diff $smaller_leng $final_factor $factor";
+			}
+			if($R_leng2 >= $R_leng1){
+			       #~~~~~ $mat_seq1 or $mat_seq2 can increase to 'slr1453,sll0238', so you need ',' in the middle only
+				   $extended_name="$mat_seq2,$mat_seq1";
+				   $L=length($extended_name);
+				   $LL=length($long_match2)+2;
+				   $seqlets[$i]= sprintf("%-${LL}s %-${L}s", $long_match2, $extended_name);
+				   splice(@seqlets, $j, 1);
+				   $i-- unless($i==0);
+				   $j--;
+				   next F1;
+			}elsif( $R_leng1 >= $R_leng2){  ## chooses the bigger range seq
+				   $extended_name="$mat_seq1,$mat_seq2"; # must be ',' not ' '
+				   $L=length($extended_name);
+				   $LL=length($long_match1)+2;
+				   $seqlets[$i]=sprintf("%-${LL}s %-${L}s", $long_match1, $extended_name);
+				   splice(@seqlets, $j, 1);
+				   $i-- unless($i <= 0);
+				   $j--;
+				   next F1;
+			}
+	     }else{
+			next F2;
+		 }
+	  }
+   }
+   if($char_opt=~/m/){
+	  for($i=0; $i< @seqlets; $i++){
+		if($seqlets[$i]=~/^ *\d+ +\d+\.?[e\-\d]* +\d+ +\d+ +(\S+) +\d+ +\d+ +(\S+) *$/){
+		   if($1 eq $2){ next }
+		   $leading_seq=$1; $long=$2; $long=~s/\,/ /g;
+		   push(@Final_out, "$leading_seq $long" );
+		}
+	  }
+   }
+   sort @Final_out;
+   return(\@Final_out);
+}
+
+
+
