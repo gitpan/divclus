@@ -1,0 +1,56 @@
+#____________________________________________________________________________
+# Title     : diviclus.pl
+# Usage     : diviclus.pl xxxxx.msp [s=100][t=30][e=30][f=2][v]
+#               or diviclus.pl *.msp
+#                           -while xxx.msp is a file with MSP file format
+#
+# Function  : 1) merges similar sequences in MSP file fomrat making
+#                hash output.
+#             2) processes the merged msp contents to sort small things
+#             3) connects the sequences when there is any common
+#                region between preliminary clusters.
+#             4) makes various files(xx.clu, xx.sat, xx.mrg) and
+#                also shows in STDOUT.
+#
+#             To controll the division of clusters, play with
+#              the below parameters(if you do not specify, defaults:
+#               t=30, s=100, e=30, f=3
+#              if you give them mulitiple fi,.es, it will process them
+#              all together.
+# Example   : diviclus.pl xxxxxx.msp s=90 t=40 e=10
+#             Above is for score 90, seqlet leng 40, evalue 10.
+#             However, usually you dont need options. Just put xxx.msp
+#
+# Keywords  : divide_clusters, diviclust, find_linker, subcluster
+# Options   : _  for debugging.
+#             #  for debugging.
+#             r  for range attachment option
+#             m  for merge file format(.mrg) output
+#             v  for some info. printout, VERBOSE
+#             S  for taking shorter region overlapped
+#             L  for taking larger  region overlapped
+#             A  for taking average region overlapped (default)
+#
+#  $short_region=  S by S -S # taking shorter region overlapped
+#  $large_region=  L by L -L # taking larger  region overlapped
+#  $average_region=A by A -A # taking average region overlapped
+#  $verbose = v by v -v
+#  $range = r by r -r
+#  $merge = m by m -m
+#  $sat_file = s by s -s
+#  $dindom = d by d -d
+#  $indup  = i by i -i
+#  $over_write = w by w -w
+#  $optimize   = o by o -o
+#  $score = by s=    # Ssearch score cutoff, default 100
+#  $factor = by f=   # factor is for the merge proces
+#                      (misoverlap tolerance factor 3=33%, 2=50%)
+#                      factor works within msp chunk for one sequence
+#                      to filter a good mergable seqlets
+#  $thresh = by t=   # seqlet length cutoff, default 30
+#  $evalue = by e=   # maximum evalue cutoff default 30
+#
+# Author    : Sarah A. Teichmann and Jong Park
+# Version   : 2.1
+#------------------------------------------------------------------------------
+
